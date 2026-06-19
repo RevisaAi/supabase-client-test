@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Supabase Auth Test</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, sans-serif;
+      background: #0f0f0f;
+      color: #e5e5e5;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .card {
+      background: #1a1a1a;
+      border: 1px solid #2a2a2a;
+      border-radius: 12px;
+      padding: 32px;
+      width: 100%;
+      max-width: 520px;
+    }
+    h1 { font-size: 20px; font-weight: 600; margin-bottom: 24px; color: #fff; }
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 500;
+      margin-bottom: 24px;
+    }
+    .status-badge.authenticated { background: #14532d; color: #4ade80; border: 1px solid #166534; }
+    .status-badge.unauthenticated { background: #450a0a; color: #f87171; border: 1px solid #7f1d1d; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; }
+    .dot.green { background: #4ade80; }
+    .dot.red { background: #f87171; }
+
+    .form-group { margin-bottom: 16px; }
+    label { display: block; font-size: 13px; color: #aaa; margin-bottom: 6px; }
+    input {
+      width: 100%;
+      padding: 10px 14px;
+      background: #111;
+      border: 1px solid #333;
+      border-radius: 8px;
+      color: #e5e5e5;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    input:focus { border-color: #555; }
+
+    .btn-row { display: flex; gap: 10px; margin-top: 20px; }
+    button {
+      flex: 1;
+      padding: 10px 16px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    button:hover { opacity: 0.85; }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-primary { background: #3b82f6; color: #fff; }
+    .btn-secondary { background: #292929; color: #e5e5e5; border: 1px solid #333; }
+    .btn-danger { background: #7f1d1d; color: #fca5a5; border: 1px solid #991b1b; }
+
+    .error-msg {
+      margin-top: 12px;
+      padding: 10px 14px;
+      background: #450a0a;
+      border: 1px solid #7f1d1d;
+      border-radius: 8px;
+      color: #f87171;
+      font-size: 13px;
+    }
+
+    .token-section { margin-top: 28px; }
+    .token-section h2 { font-size: 14px; color: #aaa; margin-bottom: 8px; }
+    .token-box {
+      background: #111;
+      border: 1px solid #2a2a2a;
+      border-radius: 8px;
+      padding: 12px;
+      font-family: monospace;
+      font-size: 11px;
+      color: #86efac;
+      word-break: break-all;
+      max-height: 140px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+    }
+    .token-box.empty { color: #555; font-style: italic; font-family: system-ui; font-size: 13px; }
+    .copy-btn {
+      margin-top: 8px;
+      flex: unset;
+      width: auto;
+      padding: 6px 14px;
+      font-size: 12px;
+      background: #1f2937;
+      color: #9ca3af;
+      border: 1px solid #374151;
+      border-radius: 6px;
+    }
+
+    .user-info { margin-top: 16px; font-size: 13px; color: #888; }
+    .user-info span { color: #ccc; }
+
+    .divider { border: none; border-top: 1px solid #2a2a2a; margin: 24px 0; }
+
+    #auth-panel { display: block; }
+    #session-panel { display: none; }
+    #forgot-panel { display: none; }
+    #reset-panel { display: none; }
+
+    .link-btn {
+      background: none;
+      border: none;
+      color: #60a5fa;
+      font-size: 13px;
+      cursor: pointer;
+      padding: 0;
+      flex: unset;
+      width: auto;
+      text-decoration: underline;
+      margin-top: 14px;
+      display: inline-block;
+    }
+    .link-btn:hover { opacity: 0.8; }
+
+    .success-msg {
+      margin-top: 12px;
+      padding: 10px 14px;
+      background: #14532d;
+      border: 1px solid #166534;
+      border-radius: 8px;
+      color: #86efac;
+      font-size: 13px;
+    }
+
+    .or-divider {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 20px 0;
+      color: #555;
+      font-size: 12px;
+    }
+    .or-divider::before,
+    .or-divider::after {
+      content: '';
+      flex: 1;
+      border-top: 1px solid #2a2a2a;
+    }
+
+    .btn-google {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 10px 16px;
+      background: #fff;
+      color: #3c4043;
+      border: 1px solid #dadce0;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.15s, box-shadow 0.15s;
+    }
+    .btn-google:hover { background: #f8f9fa; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+    .btn-google:disabled { opacity: 0.5; cursor: not-allowed; }
+  </style>
+</head>
+<body>
+<div class="card">
+  <h1>Supabase Auth Test</h1>
+
+  <div id="status-badge" class="status-badge unauthenticated">
+    <span class="dot red" id="dot"></span>
+    <span id="status-text">Not authenticated</span>
+  </div>
+
+  <!-- Login form -->
+  <div id="auth-panel">
+    <div class="form-group">
+      <label for="email">Email</label>
+      <input type="email" id="email" placeholder="you@example.com" />
+    </div>
+    <div class="form-group">
+      <label for="password">Password</label>
+      <input type="password" id="password" placeholder="••••••••" />
+    </div>
+    <div class="btn-row">
+      <button class="btn-primary" id="login-btn" onclick="login()">Sign in</button>
+      <button class="btn-secondary" id="signup-btn" onclick="signup()">Sign up</button>
+    </div>
+    <div id="error-msg" class="error-msg" style="display:none;"></div>
+    <button class="link-btn" onclick="showPanel('forgot')">Forgot password?</button>
+
+    <div class="or-divider">or</div>
+
+    <button class="btn-google" id="google-btn" onclick="signInWithGoogle()">
+      <svg width="18" height="18" viewBox="0 0 48 48">
+        <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+        <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+        <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+        <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+        <path fill="none" d="M0 0h48v48H0z"/>
+      </svg>
+      Sign in with Google
+    </button>
+  </div>
+
+  <!-- Forgot password: request reset email -->
+  <div id="forgot-panel">
+    <p style="font-size:13px;color:#aaa;margin-bottom:18px;">Enter your email and we'll send you a reset link.</p>
+    <div class="form-group">
+      <label for="reset-email">Email</label>
+      <input type="email" id="reset-email" placeholder="you@example.com" />
+    </div>
+    <div class="btn-row">
+      <button class="btn-primary" id="reset-btn" onclick="sendResetEmail()">Send reset link</button>
+    </div>
+    <div id="forgot-error" class="error-msg" style="display:none;"></div>
+    <div id="forgot-success" class="success-msg" style="display:none;"></div>
+    <button class="link-btn" onclick="showPanel('auth')">Back to sign in</button>
+  </div>
+
+  <!-- Reset password: set new password (arrived from email link) -->
+  <div id="reset-panel">
+    <p style="font-size:13px;color:#aaa;margin-bottom:18px;">Choose a new password for your account.</p>
+    <div class="form-group">
+      <label for="new-password">New password</label>
+      <input type="password" id="new-password" placeholder="••••••••" />
+    </div>
+    <div class="form-group">
+      <label for="confirm-password">Confirm new password</label>
+      <input type="password" id="confirm-password" placeholder="••••••••" />
+    </div>
+    <div class="btn-row">
+      <button class="btn-primary" id="update-btn" onclick="updatePassword()">Update password</button>
+    </div>
+    <div id="reset-error" class="error-msg" style="display:none;"></div>
+    <div id="reset-success" class="success-msg" style="display:none;"></div>
+  </div>
+
+  <!-- Session info -->
+  <div id="session-panel">
+    <div class="user-info">
+      Signed in as <span id="user-email"></span>
+    </div>
+    <hr class="divider" />
+    <div class="token-section">
+      <h2>JWT Access Token</h2>
+      <div class="token-box empty" id="token-box">No token yet</div>
+      <button class="copy-btn" onclick="copyToken()">Copy token</button>
+    </div>
+    <div class="btn-row" style="margin-top: 20px;">
+      <button class="btn-danger" onclick="logout()">Sign out</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const SUPABASE_URL = 'https://fvlmdvhjhktyescwkwzk.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_WcRGAEgIpoMkJ5hn5h5JzQ_smZuAW-R';
+
+  const { createClient } = supabase;
+  const client = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  let currentToken = null;
+
+  const PANELS = ['auth', 'forgot', 'reset', 'session'];
+  function showPanel(name) {
+    PANELS.forEach(p => {
+      const el = document.getElementById(p + '-panel');
+      if (el) el.style.display = p === name ? 'block' : 'none';
+    });
+  }
+
+  function setLoading(loading) {
+    document.getElementById('login-btn').disabled = loading;
+    document.getElementById('signup-btn').disabled = loading;
+    document.getElementById('login-btn').textContent = loading ? 'Signing in…' : 'Sign in';
+  }
+
+  function showError(msg) {
+    const el = document.getElementById('error-msg');
+    el.textContent = msg;
+    el.style.display = 'block';
+  }
+
+  function clearError() {
+    document.getElementById('error-msg').style.display = 'none';
+  }
+
+  function setAuthenticated(session) {
+    const badge = document.getElementById('status-badge');
+    const dot = document.getElementById('dot');
+    const statusText = document.getElementById('status-text');
+
+    if (session) {
+      badge.className = 'status-badge authenticated';
+      dot.className = 'dot green';
+      statusText.textContent = 'Authenticated';
+      document.getElementById('user-email').textContent = session.user.email;
+      currentToken = session.access_token;
+      const box = document.getElementById('token-box');
+      box.textContent = session.access_token;
+      box.classList.remove('empty');
+      showPanel('session');
+    } else {
+      badge.className = 'status-badge unauthenticated';
+      dot.className = 'dot red';
+      statusText.textContent = 'Not authenticated';
+      currentToken = null;
+      const box = document.getElementById('token-box');
+      box.textContent = 'No token yet';
+      box.classList.add('empty');
+      showPanel('auth');
+    }
+  }
+
+  async function login() {
+    clearError();
+    setLoading(true);
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    const { data, error } = await client.auth.signInWithPassword({ email, password });
+    setLoading(false);
+    if (error) { showError(error.message); return; }
+    setAuthenticated(data.session);
+  }
+
+  async function signup() {
+    clearError();
+    setLoading(true);
+    document.getElementById('signup-btn').textContent = 'Signing up…';
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    const { data, error } = await client.auth.signUp({ email, password });
+    setLoading(false);
+    document.getElementById('signup-btn').textContent = 'Sign up';
+    if (error) { showError(error.message); return; }
+    if (data.session) {
+      setAuthenticated(data.session);
+    } else {
+      showError('Check your email to confirm your account.');
+    }
+  }
+
+  async function logout() {
+    await client.auth.signOut();
+    setAuthenticated(null);
+  }
+
+  function copyToken() {
+    if (!currentToken) return;
+    navigator.clipboard.writeText(currentToken).then(() => {
+      const btn = document.querySelector('.copy-btn');
+      btn.textContent = 'Copied!';
+      setTimeout(() => btn.textContent = 'Copy token', 1500);
+    });
+  }
+
+  async function sendResetEmail() {
+    const btn = document.getElementById('reset-btn');
+    const errEl = document.getElementById('forgot-error');
+    const okEl = document.getElementById('forgot-success');
+    errEl.style.display = 'none';
+    okEl.style.display = 'none';
+    btn.disabled = true;
+    btn.textContent = 'Sending…';
+    const email = document.getElementById('reset-email').value.trim();
+    // Use origin+pathname so the redirect URL is stable and matches what
+    // you add to Supabase dashboard → Authentication → URL Configuration → Redirect URLs
+    const redirectTo = window.location.origin + window.location.pathname;
+    const { error } = await client.auth.resetPasswordForEmail(email, { redirectTo });
+    btn.disabled = false;
+    btn.textContent = 'Send reset link';
+    if (error) {
+      errEl.textContent = error.message;
+      errEl.style.display = 'block';
+    } else {
+      okEl.textContent = 'Reset link sent — check your inbox.';
+      okEl.style.display = 'block';
+    }
+  }
+
+  async function updatePassword() {
+    const btn = document.getElementById('update-btn');
+    const errEl = document.getElementById('reset-error');
+    const okEl = document.getElementById('reset-success');
+    errEl.style.display = 'none';
+    okEl.style.display = 'none';
+    const newPw = document.getElementById('new-password').value;
+    const confirmPw = document.getElementById('confirm-password').value;
+    if (newPw !== confirmPw) {
+      errEl.textContent = 'Passwords do not match.';
+      errEl.style.display = 'block';
+      return;
+    }
+    btn.disabled = true;
+    btn.textContent = 'Updating…';
+    const { error } = await client.auth.updateUser({ password: newPw });
+    btn.disabled = false;
+    btn.textContent = 'Update password';
+    if (error) {
+      errEl.textContent = error.message;
+      errEl.style.display = 'block';
+    } else {
+      okEl.textContent = 'Password updated! Redirecting to your session…';
+      okEl.style.display = 'block';
+      setTimeout(() => showPanel('session'), 1500);
+    }
+  }
+
+  async function signInWithGoogle() {
+    const btn = document.getElementById('google-btn');
+    btn.disabled = true;
+    btn.querySelector('span') && (btn.querySelector('span').textContent = 'Redirecting…');
+    const redirectTo = window.location.origin + window.location.pathname;
+    const { error } = await client.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo, queryParams: { prompt: 'select_account' } },
+    });
+    if (error) {
+      showError(error.message);
+      btn.disabled = false;
+    }
+    // On success the browser navigates away to Google — no further action needed here
+  }
+
+  // Restore session on load
+  client.auth.getSession().then(({ data }) => {
+    setAuthenticated(data.session ?? null);
+  });
+
+  // Keep token fresh; intercept PASSWORD_RECOVERY to show reset form
+  client.auth.onAuthStateChange((event, session) => {
+    if (event === 'PASSWORD_RECOVERY') {
+      // User arrived via the reset link — show the set-new-password form
+      currentToken = session?.access_token ?? null;
+      showPanel('reset');
+      // Also update the badge to authenticated since Supabase logs them in
+      const badge = document.getElementById('status-badge');
+      const dot = document.getElementById('dot');
+      badge.className = 'status-badge authenticated';
+      dot.className = 'dot green';
+      document.getElementById('status-text').textContent = 'Authenticated';
+      return;
+    }
+    setAuthenticated(session);
+  });
+</script>
+</body>
+</html>

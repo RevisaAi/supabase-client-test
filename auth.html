@@ -1,0 +1,11 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8" /></head>
+<body>
+<script>
+  // Supabase redirects here after password reset emails.
+  // Forward the hash (which contains the access_token / error) to the main app.
+  window.location.replace('/index.html' + window.location.hash);
+</script>
+</body>
+</html>
